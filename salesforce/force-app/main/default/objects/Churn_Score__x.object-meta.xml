@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- File: salesforce/force-app/main/default/objects/Churn_Score__x.object-meta.xml -->
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>External view of daily churn propensity scores scored by the Snowflake Snowpark pipeline (ML.PUBLIC.CUSTOMER_CHURN_SCORES), exposed via Salesforce Connect / OData 4.0 datasource &quot;Customer360_OData&quot;. One row per customer key.</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableEnhancedLookup>false</enableEnhancedLookup>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>false</enableHistory>
+    <enableLicensing>false</enableLicensing>
+    <enableSharing>true</enableSharing>
+    <externalDataSource>Customer360_OData</externalDataSource>
+    <externalName>CUSTOMER_CHURN_SCORES</externalName>
+    <fields>
+        <fullName>Customer_Key__c</fullName>
+        <description>Canonical customer key (dim_customer.customer_key) from Snowflake.</description>
+        <externalId>true</externalId>
+        <label>Customer Key</label>
+        <length>64</length>
+        <required>true</required>
+        <trackTrending>false</trackTrending>
+        <type>Text</type>
+    </fields>
+    <fields>
+        <fullName>Account_External_Id__c</fullName>
+        <description>Indirect-lookup key matching Account.External_Id__c for CRM activation.</description>
+        <label>Account External Id</label>
+        <length>18</length>
+        <referenceTo>Account</referenceTo>
+        <relationshipLabel>Churn Scores</relationshipLabel>
+        <relationshipName>ChurnScores</relationshipName>
+        <type>IndirectLookup</type>
+    </fields>
+    <fields>
+        <fullName>Churn_Probability_Score__c</fullName>
+        <description>Model-predicted churn probability in [0, 1]. Alerting threshold is 0.70.</description>
+        <label>Churn Probability Score</label>
+        <precision>9</precision>
+        <scale>6</scale>
+        <type>Number</type>
+    </fields>
+    <fields>
+        <fullName>Risk_Tier__c</fullName>
+        <description>Bucketed tier: HIGH / MEDIUM / LOW.</description>
+        <label>Risk Tier</label>
+        <length>10</length>
+        <type>Text</type>
+    </fields>
+    <fields>
+        <fullName>Model_Version__c</fullName>
+        <description>Version of the scoring model that produced this row (audit lineage).</description>
+        <label>Model Version</label>
+        <length>60</length>
+        <type>Text</type>
+    </fields>
+    <fields>
+        <fullName>Scored_At__c</fullName>
+        <description>UTC timestamp of the scoring run.</description>
+        <label>Scored At</label>
+        <type>DateTime</type>
+    </fields>
+    <label>Churn Score</label>
+    <nameField>
+        <label>Churn Score Name</label>
+        <type>Text</type>
+    </nameField>
+    <pluralLabel>Churn Scores</pluralLabel>
+    <searchSetting>
+        <externalObjectSearchEnabled>true</externalObjectSearchEnabled>
+    </searchSetting>
+    <sharingModel>Read</sharingModel>
+</CustomObject>

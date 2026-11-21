@@ -1,0 +1,108 @@
+# File: dbt/models/staging/schema.yml
+version: 2
+
+sources:
+  - name: salesforce
+    description: "Replicated Salesforce CRM objects (Fivetran CDC)."
+    database: SALESFORCE_RAW
+    schema: RAW
+    loader: fivetran
+    loaded_at_field: _fivetran_synced
+    freshness:
+      warn_after: {count: 6, period: hour}
+      error_after: {count: 24, period: hour}
+    tables:
+      - name: accounts
+        description: "CRM account master; may contain duplicate master/shadow records per business account."
+      - name: cases
+        description: "Support cases opened by AEs or customers."
+
+  - name: support
+    description: "Replicated help-desk tickets."
+    database: SUPPORT_RAW
+    schema: RAW
+    loader: fivetran
+    tables:
+      - name: tickets
+
+  - name: product
+    description: "Product telemetry events streamed from the application."
+    database: PRODUCT_RAW
+    schema: RAW
+    loader: kafka_snowpipe
+    tables:
+      - name: usage_events
+
+models:
+  - name: stg_salesforce_accounts
+    description: "Cleaned CRM accounts. Not unique at this layer by design; dim_customer enforces the grain."
+    columns:
+      - name: account_id
+        tests:
+          - not_null
+      - name: crm_created_at
+        tests:
+          - not_null
+      - name: annual_revenue
+        tests:
+          - not_null:
+              config:
+                severity: warn
+
+  - name: stg_salesforce_cases
+    description: "Normalized support cases tied to a CRM account."
+    columns:
+      - name: case_id
+        tests:
+          - unique
+          - not_null
+      - name: account_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_salesforce_accounts')
+              field: account_id
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['new', 'working', 'escalated', 'pending_customer', 'closed', 'unknown']
+      - name: priority
+        tests:
+          - accepted_values:
+              values: ['p1', 'p2', 'p3', 'p4']
+
+  - name: stg_support_tickets
+    description: "Normalized help-desk tickets."
+    columns:
+      - name: ticket_id
+        tests:
+          - unique
+          - not_null
+      - name: requester_email
+        tests:
+          - not_null
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['new', 'open', 'pending', 'solved', 'closed', 'unknown']
+              config:
+                severity: warn
+
+  - name: stg_product_usage_events
+    description: "Classified product usage event stream."
+    columns:
+      - name: usage_event_id
+        tests:
+          - unique
+          - not_null
+      - name: account_id
+        tests:
+          - relationships:
+              to: ref('stg_salesforce_accounts')
+              field: account_id
+              config:
+                where: "account_id is not null"
+      - name: event_category
+        tests:
+          - accepted_values:
+              values: ['engagement', 'value_action', 'friction', 'churn_signal', 'other']

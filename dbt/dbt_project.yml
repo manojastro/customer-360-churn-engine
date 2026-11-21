@@ -1,0 +1,35 @@
+# File: dbt/dbt_project.yml
+name: customer_360_churn
+version: 1.0.0
+config-version: 2
+
+profile: customer_360_churn
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+target-path: target
+clean-targets:
+  - target
+  - dbt_packages
+
+require-dbt-version: [">=1.7.0", "<1.8.0"]
+
+vars:
+  # Watermark overlap window (days) for incremental interaction ingestion.
+  fact_overlap_days: 3
+  # Score threshold mirrored in Apex/Flow alerting logic.
+  churn_high_risk_threshold: 0.70
+
+models:
+  customer_360_churn:
+    staging:
+      +schema: STAGING
+      +materialized: view
+      +tags: ["staging"]
+      +group: sources
+    marts:
+      +schema: MARTS
+      +materialized: table
+      +tags: ["marts"]
+      +post-hook:
+        - "grant select on {{ this }} to role CHURN_ENGINEER"

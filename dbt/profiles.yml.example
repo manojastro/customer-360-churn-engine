@@ -1,0 +1,28 @@
+# File: dbt/profiles.yml.example
+# Copy to ~/.dbt/profiles.yml (or DBT_PROFILES_DIR) and populate via env vars.
+customer_360_churn:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: CHURN_ENGINEER
+      warehouse: WH_TRANSFORM
+      database: ANALYTICS
+      schema: STAGING
+      threads: 8
+      client_session_keep_alive: false
+      reuse_connections: true
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH') }}"
+      role: CHURN_ENGINEER
+      warehouse: WH_TRANSFORM
+      database: ANALYTICS
+      schema: STAGING
+      threads: 16
+      client_session_keep_alive: false

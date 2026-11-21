@@ -1,0 +1,85 @@
+# File: dbt/models/marts/schema.yml
+version: 2
+
+models:
+  - name: dim_customer
+    description: >
+      Unified Customer 360 dimension. One row per canonical business account,
+      resolved across CRM, support, and product-usage identities, enriched with
+      engagement/support aggregates and the derived health_score used by the
+      churn model and by AE dashboards.
+    columns:
+      - name: customer_key
+        description: "Canonical business key (CRM account_id). Grain of this table."
+        tests:
+          - unique
+          - not_null
+      - name: identity_hash
+        description: "md5 of the best available identity (support email -> domain -> anon namespace). Stable ML join key."
+        tests:
+          - not_null
+          - unique
+      - name: tenure_days
+        description: "Days since the CRM record was created."
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+              config:
+                severity: warn
+      - name: lifetime_value
+        description: "Cumulative recognized value proxy: annual_revenue x tenure in years."
+        tests:
+          - not_null
+      - name: health_score
+        description: "0-100 weighted blend of usage momentum, support friction, and CSAT."
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "between 0 and 100"
+      - name: is_current
+        description: "SCD-style current-row flag; always true for this snapshot materialization."
+        tests:
+          - accepted_values:
+              values: [true]
+
+  - name: fact_interactions
+    description: >
+      Incremental union fact of every customer-facing interaction (CRM cases,
+      help-desk tickets, product usage events) at one-event grain with an
+      md5 surrogate key. Loaded via MERGE on interaction_key.
+    columns:
+      - name: interaction_key
+        description: "md5(source_system | event_type | source_event_id). Idempotency key for the merge."
+        tests:
+          - unique
+          - not_null
+      - name: customer_key
+        description: "FK to dim_customer.customer_key. Null allowed for anonymous usage events."
+        tests:
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_key
+              config:
+                where: "customer_key is not null"
+      - name: event_type
+        description: "Canonical classification across all source systems."
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - 'support_case'
+                - 'support_ticket'
+                - 'product_usage_engagement'
+                - 'product_usage_value_action'
+                - 'product_usage_friction'
+                - 'product_usage_churn_signal'
+                - 'product_usage_other'
+      - name: sentiment_class
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['positive', 'neutral', 'negative']
+      - name: interaction_ts
+        tests:
+          - not_null
